@@ -1,13 +1,14 @@
 import shutil
 import tempfile
 
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 
-from ..models import Group, Post, Comment
+from ..models import Group, Post, Comment, Follow
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
 
@@ -20,6 +21,7 @@ class PostFormTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='auth_test1')
+        cls.author = User.objects.create_user(username='author1')
         cls.group = Group.objects.create(
             title='Тестовая группа1',
             slug='test_slug1',
@@ -114,5 +116,35 @@ class PostFormTests(TestCase):
             Comment.objects.filter(
                 text=form_data['text'],
                 author=self.user,
+                post=self.post
+            ).exists()
+        )
+
+    def test_cache(self):
+        response_old = self.authorized_client.get(reverse('posts:index'))
+        old_posts = response_old.content
+        print(old_posts)
+        Post.objects.all().delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        posts = response.content
+        print(posts)
+        self.assertEqual(posts, old_posts)
+
+        cache.clear()
+        response_new = self.authorized_client.get(reverse('posts:index'))
+        new_posts = response_new.content
+        print(new_posts)
+        self.assertNotEqual(posts, new_posts)
+
+    def test_create_follow(self):
+        follow_count = Follow.objects.count()
+        self.authorized_client.post(
+            reverse('posts:profile_follow', kwargs={'username': self.author})
+        )
+        self.assertEqual(Follow.objects.count(), follow_count + 1)
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.author,
             ).exists()
         )

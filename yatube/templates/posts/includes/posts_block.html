@@ -1,5 +1,4 @@
 {% load thumbnail %}
-{% load cache %}
 <article>
   <ul>
       <li>
@@ -13,12 +12,9 @@
   {% thumbnail post.image "960x339" crop="center" upscale=True as im %}
     <img class="card-img my-2" src="{{ im.url }}">
   {% endthumbnail %}
-  {% cache 20 sidebar request.user.username %}
   <p>{{ post.text }}</p>
-  {% endcache %}
   <a href="{% url 'posts:post_detail' post.pk %}">подробная информация </a>
 </article>
-{% if post.group %}
+{% if post.group and post.group.slug not in request.path %}
 <a href="{% url 'posts:group_list' post.group.slug %}">все записи группы</a>
 {% endif %}
-{% if not forloop.last %}<hr>{% endif %}

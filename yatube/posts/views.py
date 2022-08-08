@@ -47,10 +47,10 @@ def group_posts(request, slug):
 
 def profile(request, username):
     author = get_object_or_404(User, username=username)
-    following = False
-    if request.user.is_authenticated:
-        if Follow.objects.filter(user=request.user, author=author).exists():
-            following = True
+    following = (
+        request.user.is_authenticated
+        and Follow.objects.filter(author__following__user=request.user)
+    )
     post_list = author.posts.select_related('group')
     context = {
         'author': author,
@@ -63,9 +63,8 @@ def profile(request, username):
 def post_detail(request, post_id):
     post = get_object_or_404(Post, id=post_id)
     comments = post.comments.select_related('author')
-    form = CommentForm()
     context = {
-        'form': form,
+        'form': CommentForm(),
         'post': post,
         'comments': comments,
     }
@@ -121,19 +120,17 @@ def post_edit(request, post_id):
 
 @login_required
 def profile_unfollow(request, username):
-    user = get_object_or_404(User, username=request.user)
     author = get_object_or_404(User, username=username)
-    Follow.objects.filter(user=user, author=author).delete()
+    Follow.objects.filter(user=request.user, author=author).delete()
     return redirect('posts:profile', username)
 
 
 @login_required
 def profile_follow(request, username):
-    user = get_object_or_404(User, username=request.user)
     author = get_object_or_404(User, username=username)
-    if author != user:
+    if author != request.user:
         Follow.objects.get_or_create(
-            user=user,
+            user=request.user,
             author=author,
         )
     return redirect('posts:profile', username)

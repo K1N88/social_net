@@ -104,3 +104,15 @@ class Follow(models.Model):
         related_name='following',
         verbose_name='Автор подписки',
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                name='author_user_unique',
+                fields=['author', 'user'],
+            ),
+            models.CheckConstraint(
+                name="author_not_user",
+                check=models.Q(author__name='user'),
+            ),
+        ]
