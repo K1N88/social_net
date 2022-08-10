@@ -1,13 +1,14 @@
 import shutil
 import tempfile
 
+from django.core.cache import cache
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.conf import settings
 
-from ..models import Group, Post
+from ..models import Group, Post, Follow
 from ..forms import PostForm, CommentForm
 
 TEMP_MEDIA_ROOT = tempfile.mkdtemp(dir=settings.BASE_DIR)
@@ -21,6 +22,7 @@ class PostPagesTests(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.user = User.objects.create_user(username='auth_test1')
+        cls.author = User.objects.create_user(username='author1')
         cls.group = Group.objects.create(
             title='Тестовая группа 1',
             slug='test_slug1',
@@ -95,3 +97,46 @@ class PostPagesTests(TestCase):
             reverse('posts:post_detail', kwargs={'post_id': self.post.id})
         )
         self.assertIsInstance(response.context['form'], CommentForm)
+
+    def test_create_follow(self):
+        follow_count = Follow.objects.count()
+        self.authorized_client.post(
+            reverse('posts:profile_follow', kwargs={'username': self.author})
+        )
+        self.assertEqual(Follow.objects.count(), follow_count + 1)
+        self.assertTrue(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.author,
+            ).exists()
+        )
+
+    def test_user_unfollow(self):
+        Follow.objects.create(
+            user=self.user,
+            author=self.author,
+        )
+        follow_count = Follow.objects.count()
+        self.authorized_client.post(
+            reverse('posts:profile_unfollow', kwargs={'username': self.author})
+        )
+        self.assertEqual(Follow.objects.count(), follow_count - 1)
+        self.assertFalse(
+            Follow.objects.filter(
+                user=self.user,
+                author=self.author,
+            ).exists()
+        )
+
+    def test_cache(self):
+        response_old = self.authorized_client.get(reverse('posts:index'))
+        old_posts = response_old.content
+        Post.objects.all().delete()
+        response = self.authorized_client.get(reverse('posts:index'))
+        posts = response.content
+        self.assertEqual(posts, old_posts)
+
+        cache.clear()
+        response_new = self.authorized_client.get(reverse('posts:index'))
+        new_posts = response_new.content
+        self.assertNotEqual(posts, new_posts)

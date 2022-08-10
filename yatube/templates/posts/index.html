@@ -4,7 +4,7 @@
 {% block content %}
 <h1>{{title}}</h1>
 {% include 'posts/includes/switcher.html' %}
-{% cache 20 sidebar request.user.username %}
+{% cache 20 index_page page_obj.number %}
 {% for post in page_obj %}
 {% include 'posts/includes/posts_block.html' %}
 {% if not forloop.last %}<hr>{% endif %}

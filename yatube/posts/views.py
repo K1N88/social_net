@@ -49,7 +49,7 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     following = (
         request.user.is_authenticated
-        and Follow.objects.filter(author__following__user=request.user)
+        and request.user in author.follower.all()
     )
     post_list = author.posts.select_related('group')
     context = {
@@ -62,11 +62,10 @@ def profile(request, username):
 
 def post_detail(request, post_id):
     post = get_object_or_404(Post, id=post_id)
-    comments = post.comments.select_related('author')
+    print()
     context = {
         'form': CommentForm(),
         'post': post,
-        'comments': comments,
     }
     return render(request, 'posts/post_detail.html', context)
 
