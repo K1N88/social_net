@@ -113,6 +113,6 @@ class Follow(models.Model):
             ),
             models.CheckConstraint(
                 name="author_not_user",
-                check=models.Q(author=models.F('user').exclude()),
+                check=~models.Q(author=models.F('user')),
             ),
         ]
