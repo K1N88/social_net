@@ -49,7 +49,7 @@ def profile(request, username):
     author = get_object_or_404(User, username=username)
     following = (
         request.user.is_authenticated
-        and request.user in author.follower.all()
+        and request.user.follower.filter(author=author).exists()
     )
     post_list = author.posts.select_related('group')
     context = {
